@@ -30,8 +30,8 @@ def get_hog_features(img, orient, pix_per_cell, cell_per_block,
 # Have this function call bin_spatial() and color_hist()
 
 
-def extract_features(image, cspace='RGB', orient=9,
-                     pix_per_cell=8, cell_per_block=2, hog_channel=0):
+def hog_feature(image, cspace='RGB', orient=9,
+                pix_per_cell=8, cell_per_block=2, hog_channel=0):
     if cspace != 'RGB':
         if cspace == 'HSV':
             feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
@@ -58,3 +58,21 @@ def extract_features(image, cspace='RGB', orient=9,
         hog_features = get_hog_features(feature_image[:, :, hog_channel], orient,
                                         pix_per_cell, cell_per_block, vis=False, feature_vec=True)
     return hog_features
+
+
+def bin_spatial(img, size=(32, 32)):
+    color1 = cv2.resize(img[:, :, 0], size).ravel()
+    color2 = cv2.resize(img[:, :, 1], size).ravel()
+    color3 = cv2.resize(img[:, :, 2], size).ravel()
+    return np.hstack((color1, color2, color3))
+
+
+def color_hist(img, nbins=32):  # bins_range=(0, 256)
+    # Compute the histogram of the color channels separately
+    channel1_hist = np.histogram(img[:, :, 0], bins=nbins)
+    channel2_hist = np.histogram(img[:, :, 1], bins=nbins)
+    channel3_hist = np.histogram(img[:, :, 2], bins=nbins)
+    # Concatenate the histograms into a single feature vector
+    hist_features = np.concatenate((channel1_hist[0], channel2_hist[0], channel3_hist[0]))
+    # Return the individual histograms, bin_centers and feature vector
+    return hist_features
