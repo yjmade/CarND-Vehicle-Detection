@@ -12,8 +12,9 @@ from sklearn.model_selection import train_test_split
 
 from sklearn.svm import LinearSVC
 from sklearn.preprocessing import StandardScaler
-import features
+from joblib import Parallel, delayed
 
+import features
 from utils import log_time  # , print_loop
 
 
@@ -33,14 +34,20 @@ DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 
 def imread(path):
     bgr = cv2.imread(path)
+    # return bgr
     return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
 
-def extract_feature(img):
-    hog_features = features.hog_feature(img, cspace=colorspace, orient=orient, pix_per_cell=pix_per_cell, cell_per_block=cell_per_block, hog_channel=hog_channel)
+def extract_feature(img, source_color="RGB"):
+    img = features.color_cov(img, colorspace, source_color=source_color)
+    hog_features = features.hog_feature(img, orient=orient, pix_per_cell=pix_per_cell, cell_per_block=cell_per_block, hog_channel=hog_channel)
     spatial_features = features.bin_spatial(img, size=spatial_size)
     hist_features = features.color_hist(img, nbins=hist_bins)
     return np.hstack((spatial_features, hist_features, hog_features))
+
+
+def extract_feature_from_path(path):
+    return extract_feature(imread(path))
 
 
 def train_model():
@@ -55,15 +62,13 @@ def train_model():
     #         cars.append(image)
 
     with log_time("extract car features"):
-        car_features = [
-            extract_feature(imread(img_path))
-            for img_path in cars
-        ]
+        car_features = Parallel(n_jobs=-1, max_nbytes=None, verbose=5)(
+            delayed(extract_feature_from_path)(img_path) for img_path in cars
+        )
     with log_time("extract noncar features"):
-        notcar_features = [
-            extract_feature(imread(img_path))
-            for img_path in notcars
-        ]
+        notcar_features = Parallel(n_jobs=-1, max_nbytes=None, verbose=5)(
+            delayed(extract_feature_from_path)(img_path) for img_path in notcars
+        )
 
     # Create an array stack of feature vectors
     X = np.vstack((car_features, notcar_features)).astype(np.float64)

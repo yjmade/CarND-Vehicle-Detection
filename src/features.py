@@ -30,23 +30,9 @@ def get_hog_features(img, orient, pix_per_cell, cell_per_block,
 # Have this function call bin_spatial() and color_hist()
 
 
-def hog_feature(image, cspace='RGB', orient=9,
+def hog_feature(feature_image, orient=9,
                 pix_per_cell=8, cell_per_block=2, hog_channel=0):
-    if cspace != 'RGB':
-        if cspace == 'HSV':
-            feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-        elif cspace == 'LUV':
-            feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2LUV)
-        elif cspace == 'HLS':
-            feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
-        elif cspace == 'YUV':
-            feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2YUV)
-        elif cspace == 'YCrCb':
-            feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2YCrCb)
-    else:
-        feature_image = np.copy(image)
 
-    # Call get_hog_features() with vis=False, feature_vec=True
     if hog_channel == 'ALL':
         hog_features = []
         for channel in range(feature_image.shape[2]):
@@ -76,3 +62,9 @@ def color_hist(img, nbins=32):  # bins_range=(0, 256)
     hist_features = np.concatenate((channel1_hist[0], channel2_hist[0], channel3_hist[0]))
     # Return the individual histograms, bin_centers and feature vector
     return hist_features
+
+
+def color_cov(image, cspace, source_color):
+    if cspace == source_color:
+        return image
+    return cv2.cvtColor(image, getattr(cv2, "COLOR_%s2%s" % (source_color, cspace)))
