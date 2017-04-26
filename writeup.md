@@ -33,7 +33,7 @@ You're reading it!
 
 ####1. Explain how (and identify where in your code) you extracted HOG features from the training images.
 
-The code for this step is contained in the first code cell of the IPython notebook (or in lines # through # of the file called `some_file.py`).  
+The code for this step is contained in the `src/train_svm.py`
 
 I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
 
@@ -52,32 +52,53 @@ I tried various combinations of parameters and...
 
 ####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
-I trained a linear SVM using...
+I trained a linear SVM using `LinearSVC` from scikit-learn. The code of this step is located at `src/train_svm.py` from line 82 to line 104.
+
+First I stack the features of cars and not-cars, and generate the corespond labels.
+Then I train a `StandardScaler` to proper scale each feature to a nomialized scale.
+Then I split 20% of train data to be test data.
+And I use the normalized train data to train the  LinearSVC, and get the score of accuracy on test set.
+At last, I use pickle to dump the `LinearSVC` and `StrandardScaler` instance to file for future use. 
 
 ###Sliding Window Search
 
 ####1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
-I decided to search random window positions at random scales all over the image and came up with this (ok just kidding I didn't actually ;):
+I use Hog Sub-sampling Window Search for slide window search, for it's much efficient than silde window and can get higher overlap for it's only caculate the hog features for once.
 
-![alt text][image3]
+The code is locate at `src/train_svm.py` from line 130 to 195.
+
+It first generate hog for the whole image, then slide over the image by sub-sample the hog for the corresponding area. For each step it move 2 cells. Which get a overlap rate of 75% equavelent to slide window aproach.
+
+Then I take the `LinearSVC` save in train steps to classify each window.
+
+Here is a result after HOG Sub-sampling search
+![slide window](./output_images/slide_window.png)
+
 
 ####2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
 Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are some example images:
 
-![alt text][image4]
+![slide window](./output_images/test1.png)
+![slide window](./output_images/test2.png)
+![slide window](./output_images/test3.png)
+![slide window](./output_images/test4.png)
 ---
 
 ### Video Implementation
 
 ####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./output_images/project_video.mp4)
 
 
 ####2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
 
+This step is locate at `src/vehicle_detection.py` from line 189 to 205.
+
 I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions.  I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected.  
+And since I'm working on processing a video which get a series of frames, so that I can take a peorid of frames and sum them up so that I can stabilize the bounding box across time.
+By trying different combination of peorid and threashold, my final choice is 25 frames which equivilent to 1s of frames and threshold at 20.
 
 Here's an example result showing the heatmap from a series of frames of video, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the last frame of video:
 
@@ -89,7 +110,7 @@ Here's an example result showing the heatmap from a series of frames of video, t
 ![alt text][image6]
 
 ### Here the resulting bounding boxes are drawn onto the last frame in the series:
-![alt text][image7]
+![alt text](./output_images/test_video_39.png)
 
 
 

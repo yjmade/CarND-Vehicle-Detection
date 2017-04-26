@@ -1,19 +1,18 @@
+# -*- coding: utf-8 -*-
+import cv2
+import numpy as np
+from scipy.ndimage.measurements import label as sk_label
 import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
-from train_svm import get_model
-import cv2
-
-# -*- coding: utf-8 -*-
-import sys
-import os
 sys.path.insert(1, os.path.dirname(os.path.dirname(__file__)))
-import numpy as np
-from scipy.ndimage.measurements import label as sk_label
+
+
+from train_svm import get_model, imread, imwrite
 from visualization import draw_bboxes
 
 
-model_predict = get_model()
+model = get_model()
 
 
 def slide_window(
@@ -116,7 +115,7 @@ def slide_window_predict(img, batch_size, **kwargs):
         for window_bbox in windows
     ]
 
-    for window, prediction in zip(windows, model_predict(np.array(window_imgs))):
+    for window, prediction in zip(windows, model.predict(np.array(window_imgs))):
         # print(prediction)
         if prediction:
             yield window
@@ -144,3 +143,75 @@ def main(img, show=False):
     # bboxes=slide_window(img.shape)
     draw_img = draw_bboxes(img, bboxes, show=show)
     return draw_img
+
+
+def main_find_cars(img_or_path, show=False):
+    img, draw_img = imread(img_or_path, draw=True)
+    heatmap = np.zeros(img.shape[:2], dtype=int)
+    bboxes = []
+    for window in [64]:
+        for positive_window in model.find_cars(img,
+                                               y_start_stop=[400, 656],
+                                               window=window
+                                               ):
+            # print(positive_window)
+            heatmap = add_heat(heatmap, positive_window)
+            # bboxes.append(positive_window)
+    heatmap = apply_threshold(heatmap, 3)
+    bboxes = get_bboxes_from_heatmap(heatmap)
+
+    draw_img = draw_bboxes(draw_img, bboxes, show=show)
+    return draw_img
+
+
+class FrameQueue:
+
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.frames = []
+
+    def enqueue(self, item):
+        self.frames.append(item)
+        if len(self.frames) > self.capacity:
+            self.frames.pop(0)
+
+    def sum_frames(self):
+        return np.sum(self.frames, axis=0)
+
+
+class Detector:
+
+    def __init__(self, save=False):
+        self.queue = FrameQueue(25)
+        self.save = save
+        self.seq = 0
+
+    def detect(self, img):
+        self.seq += 1
+        img, draw_img = imread(img, draw=True)
+        heatmap = np.zeros(img.shape[:2], dtype=int)
+        # bboxes = []
+        for window in [64]:
+            for positive_window in model.find_cars(img,
+                                                   y_start_stop=[400, 656],
+                                                   window=window
+                                                   ):
+                # print(positive_window)
+                heatmap = add_heat(heatmap, positive_window)
+            # bboxes.append(positive_window)
+
+        self.queue.enqueue(heatmap)
+        heatmap = self.queue.sum_frames()
+
+        heatmap = apply_threshold(heatmap, 20)
+        bboxes = get_bboxes_from_heatmap(heatmap)
+        draw_img = draw_bboxes(draw_img, bboxes, show=False)
+        if self.save:
+            imwrite(draw_img, "%s_%d.png" % (self.save, self.seq), source_color="RGB")
+        return draw_img
+
+
+def apply_video(input_video_path, output_path, save=False):
+    from moviepy.editor import VideoFileClip
+    clip = VideoFileClip(input_video_path).fl_image(Detector(save=save).detect)
+    clip.write_videofile(output_path, audio=False, threads=8)
