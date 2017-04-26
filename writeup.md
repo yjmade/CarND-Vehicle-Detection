@@ -46,11 +46,26 @@ Here is an example using the `YCrCb` color space and HOG parameters of `orientat
 
 ![alt text][image2]
 
-####2. Explain how you settled on your final choice of HOG parameters.
+####2. Explain how you settled on your final choice of HOG parameters and color features.
 
-I tried various combinations of parameters and...
+I tried various combinations of parameters and the end up with the following parameters which provide the best result of SVM classifier:
 
-####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
+1.HOG (`get_hog_features()` in `src/features.py`) :
+
+* orient = 9
+* pix_per_cell = 8
+* cell_per_block = 2
+* cspace = YCrCb
+
+2.Spatial Binning (`bin_spatial()` in `src/features.py`):
+
+* nbins=32
+
+3.Color histgrams (`color_hist()` in `src/features.py`):
+
+* color_hist = 32
+
+####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features and color features.
 
 I trained a linear SVM using `LinearSVC` from scikit-learn. The code of this step is located at `src/train_svm.py` from line 82 to line 104.
 
@@ -73,10 +88,14 @@ It first generate hog for the whole image, then slide over the image by sub-samp
 Then I take the `LinearSVC` save in train steps to classify each window.
 
 Here is a result after HOG Sub-sampling search
+
 ![slide window](./output_images/slide_window.png)
 
 
 ####2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
+
+I tried different combination of feature generation and parameters. At begining I tried to just use hog from 1 channel, svc gives 93% accuracy, then I use all channel hog, then get 95% accuracy. Then I take also the spatial features and color histogram features, then I get 98%.
+Then I change the color space from RGB to YCrCb, which give me 99.45%.  At the end, I tried to nomalize the image by divide the image to 255, to make the value 0 to 1, and I get 99.58% accuracy.
 
 Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are some example images:
 
@@ -104,10 +123,15 @@ Here's an example result showing the heatmap from a series of frames of video, t
 
 ### Here are six frames and their corresponding heatmaps:
 
-![alt text][image5]
+![alt text](./output_images/frame1.png)
+![alt text](./output_images/frame2.png)
+![alt text](./output_images/frame3.png)
+![alt text](./output_images/frame4.png)
+![alt text](./output_images/frame5.png)
+![alt text](./output_images/frame6.png)
 
 ### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
-![alt text][image6]
+![alt text](./output_images/heatmap_sum.png)
 
 ### Here the resulting bounding boxes are drawn onto the last frame in the series:
 ![alt text](./output_images/test_video_39.png)
@@ -122,3 +146,12 @@ Here's an example result showing the heatmap from a series of frames of video, t
 
 Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
 
+In this project, we learned how to do Vehicle Detection by use computer vision with machine learning techniques. By carefully choosing different combination of parameters, it show pretty good result.
+
+The biggest issue of this approch is it's speed, where on my compute (4 core Haswell), it can process 1280x800 image at only 2 fps even after I use hog subsample aproach to calculate the hog features only once (if use raw slide window approach, only 0.4 fps), and also all the pipeline is not easily GPU acceleratable. And in real life, at least 24 fps is required to achieve a real time result with less powerful hardware confiuration.
+
+One posible way that may imporve is to use deep learning model to replace, like the recently popular model [YOLO](https://pjreddie.com/darknet/yolo/) and [SSD](https://arxiv.org/abs/1512.02325), it's a replacement of RCNN for the case speed is matter, they can produce good result in realtime with GPU support, like the recently released platform `NVIDIA Jetson TX2` provide quite good computation power by GPU cores embedded.
+
+Another problem is I think Linear SVM Classifier is not so scalable for realworld scenery. The real world is non-linear. For this problem, we can either choose a better kernel for SVM, or use CNN model. 
+
+   

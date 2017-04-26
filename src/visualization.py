@@ -11,3 +11,14 @@ def draw_bboxes(img, bboxes, show=True):
         plt.imshow(img)
         plt.show()
     return img
+
+
+def draw_bbox_heatmap(img, bboxes, heatmap):
+    bbox_img=draw_bboxes(img, bboxes, show=False)
+    fig=plt.figure(figsize=(10,10))
+    fig.add_subplot(1,2,1)
+    plt.imshow(bbox_img)
+    fig.add_subplot(1,2,2)
+    plt.imshow(heatmap)
+    plt.show()
+    return bbox_img
